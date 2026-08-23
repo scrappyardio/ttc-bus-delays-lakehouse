@@ -10,7 +10,7 @@ USE CATALOG ttc_bus_delays;
 
 -- COMMAND ----------
 
--- 1. Pass rate. Put this number in the README.
+
 SELECT
   (SELECT count(*) FROM silver.bus_delays)            AS clean_rows,
   (SELECT count(*) FROM silver.bus_delays_quarantine) AS bad_rows,

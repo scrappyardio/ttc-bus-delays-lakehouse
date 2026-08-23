@@ -14,6 +14,11 @@
 
 # COMMAND ----------
 
+# MAGIC %sql
+# MAGIC USE CATALOG ttc_bus_delays
+
+# COMMAND ----------
+
 from pyspark.sql import functions as F
 
 CATALOG = "ttc_bus_delays"
@@ -21,7 +26,7 @@ spark.sql(f"USE CATALOG {CATALOG}")
 
 bronze = spark.table("bronze.bus_delays_raw")
 present = set(bronze.columns)
-print(sorted(present))
+display(sorted(present))
 
 # COMMAND ----------
 
@@ -89,7 +94,9 @@ std = bronze.select(
     F.col("_source_file"),
 )
 
-display(std.limit(20))
+# display(std.select("*").groupBy("incident_type").count())
+display(std)
+
 
 # COMMAND ----------
 
@@ -100,19 +107,39 @@ display(std.limit(20))
 
 # COMMAND ----------
 
-# MAGIC %sql
-# MAGIC SELECT *
-# MAGIC FROM csv.`/Volumes/ttc_bus_delays/bronze/landing/Code Descriptions.csv`;
+# MAGIC %md
+# MAGIC ### Adding the Incidents Codes
 
 # COMMAND ----------
 
-spark.sql("""
-CREATE TABLE IF NOT EXISTS silver.incident_map (
-  incident_type     STRING,
-  incident_category STRING,
-  is_reviewed       BOOLEAN
-) COMMENT 'Analyst-maintained mapping of raw incident codes to business categories'
-""")
+# MAGIC %sql
+# MAGIC SELECT *
+# MAGIC FROM read_files(
+# MAGIC     '/Volumes/ttc_bus_delays/bronze/landing/Code Descriptions.csv',
+# MAGIC     format => 'csv',
+# MAGIC     header => true
+# MAGIC )
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ### "â" Symbols in Select Statement Above
+# MAGIC ### Are Due to Wrong Coding 
+# MAGIC Read Fix Below
+
+# COMMAND ----------
+
+codes = (spark.read
+    .option("header", "true")
+    .option("encoding", "ISO-8859-1")
+    .csv("/Volumes/ttc_bus_delays/bronze/landing/Code Descriptions.csv")
+    .select(
+        F.upper(F.trim(F.col("CODE"))).alias("incident_type"),
+        F.upper(F.trim(F.regexp_replace(F.col("DESCRIPTION"), "[^\\x20-\\x7E]+", "-"))).alias("code_description"),
+    ))
+
+codes.write.mode("overwrite").saveAsTable("silver.code_descriptions")
+display(codes)
 
 # COMMAND ----------
 
@@ -138,17 +165,6 @@ WHERE i.incident_type IS NOT NULL
 
 # COMMAND ----------
 
-# MAGIC %md
-# MAGIC **Review this output before trusting the gold layer.**
-# MAGIC If `Other` holds a large share, or something is obviously misfiled, fix it with:
-# MAGIC ```sql
-# MAGIC UPDATE silver.incident_map
-# MAGIC SET incident_category = 'Equipment', is_reviewed = true
-# MAGIC WHERE incident_type = 'MFUS';
-# MAGIC ```
-
-# COMMAND ----------
-
 display(
     std.groupBy("incident_type")
        .agg(F.count("*").alias("rows"), F.sum("delay_min").alias("lost_minutes"))
@@ -158,20 +174,93 @@ display(
 
 # COMMAND ----------
 
-display(
-    std.filter(F.col("incident_type").isin("DIVERSION", "MFDV"))
-       .groupBy("_source_file", "incident_type").count()
-       .orderBy("_source_file")
-)
+# MAGIC %sql
+# MAGIC SELECT *
+# MAGIC FROM ttc_bus_delays.silver.code_descriptions
+# MAGIC WHERE incident_type LIKE 'EF%'
 
 # COMMAND ----------
 
-display(spark.sql("""
-SELECT incident_category, count(*) AS codes, collect_set(incident_type) AS examples
-FROM silver.incident_map
-GROUP BY incident_category
-ORDER BY codes DESC
-"""))
+std.select("incident_type").distinct().createOrReplaceTempView("v_incidents")
+
+spark.sql("""
+INSERT INTO silver.incident_map
+SELECT
+  i.incident_type,
+  CASE
+    WHEN i.incident_type LIKE 'EF%' THEN 'Equipment'
+    WHEN i.incident_type LIKE 'SF%' THEN 'External'
+    WHEN i.incident_type IN ('MFCN') THEN 'Safety'
+    WHEN i.incident_type LIKE 'MF%' THEN 'Equipment'
+    WHEN i.incident_type LIKE 'TF%' THEN 'Operational'
+    ELSE 'Other'
+  END,
+  false
+FROM v_incidents i
+WHERE i.incident_type IS NOT NULL
+  AND i.incident_type NOT IN (SELECT incident_type FROM silver.incident_map)
+""")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT incident_category, count(*) AS n
+# MAGIC FROM silver.incident_map
+# MAGIC GROUP BY incident_category
+# MAGIC ORDER BY n DESC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT incident_type FROM silver.incident_map ORDER BY incident_type
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC UPDATE silver.incident_map
+# MAGIC SET incident_category = 'Equipment', is_reviewed = true
+# MAGIC WHERE incident_type LIKE '%MECHANICAL%';
+# MAGIC
+# MAGIC UPDATE silver.incident_map
+# MAGIC SET incident_category = 'Operational', is_reviewed = true
+# MAGIC WHERE incident_type LIKE 'LATE%'
+# MAGIC    OR incident_type LIKE '%DIVERSION%'
+# MAGIC    OR incident_type LIKE '%OFF ROUTE%'
+# MAGIC    OR incident_type LIKE '%GENERAL DELAY%'
+# MAGIC    OR incident_type LIKE '%OPERATIONS%'
+# MAGIC    OR incident_type LIKE '%HELD BY%'
+# MAGIC    OR incident_type LIKE '%MANAGEMENT%';
+# MAGIC
+# MAGIC UPDATE silver.incident_map
+# MAGIC SET incident_category = 'External', is_reviewed = true
+# MAGIC WHERE incident_type LIKE '%COLLISION%'
+# MAGIC    OR incident_type LIKE '%EMERGENCY%'
+# MAGIC    OR incident_type LIKE '%SECURITY%'
+# MAGIC    OR incident_type LIKE '%ROAD BLOCKED%';
+# MAGIC
+# MAGIC UPDATE silver.incident_map
+# MAGIC SET incident_category = 'Safety', is_reviewed = true
+# MAGIC WHERE incident_type LIKE '%CLEANING%'
+# MAGIC    OR incident_type LIKE '%INVESTIGATION%'
+# MAGIC    OR incident_type LIKE '%VISION%';
+# MAGIC
+# MAGIC UPDATE silver.incident_map
+# MAGIC SET incident_category = 'Operational', is_reviewed = true
+# MAGIC WHERE incident_type = 'MFDV';
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT incident_category, count(*) AS n, collect_set(incident_type) AS examples
+# MAGIC FROM silver.incident_map
+# MAGIC GROUP BY incident_category
+# MAGIC ORDER BY n DESC
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT *
+# MAGIC FROM silver.incident_map
 
 # COMMAND ----------
 
