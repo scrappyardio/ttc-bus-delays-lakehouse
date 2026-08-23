@@ -1,4 +1,8 @@
 # Databricks notebook source
+# /// script
+# [tool.databricks.environment]
+# environment_version = "5"
+# ///
 # MAGIC %md
 # MAGIC # 02 — Silver build
 # MAGIC Reads `bronze.bus_delays_raw` and produces:
@@ -34,7 +38,7 @@ def unify(*names):
 
 # COMMAND ----------
 
-raw_date  = unify("Report Date", "Date")
+raw_date  = unify("Report_Date", "Date")
 raw_time  = unify("Time")
 raw_route = unify("Route", "Line")
 
@@ -42,17 +46,17 @@ raw_route = unify("Route", "Line")
 # substring(1,10) handles "2014-01-01 00:00:00" and "2025-01-01T00:00:00",
 # which a bare yyyy-MM-dd pattern rejects because of the trailing text.
 event_date = F.coalesce(
-    F.to_date(F.substring(raw_date, 1, 10), "yyyy-MM-dd"),
-    F.to_date(raw_date, "d-MMM-yy"),
-    F.to_date(raw_date, "M/d/yyyy"),
+    F.try_to_date(F.substring(raw_date, 1, 10), F.lit("yyyy-MM-dd")),
+    F.try_to_date(raw_date, F.lit("d-MMM-yy")),
+    F.try_to_date(raw_date, F.lit("M/d/yyyy")),
 )
 
 # Spark expects AM/PM, the source has "a.m." with dots and lowercase.
 time_clean = F.upper(F.regexp_replace(raw_time, r"\.", ""))
 parsed_time = F.coalesce(
-    F.to_timestamp(time_clean, "hh:mm:ss a"),
-    F.to_timestamp(time_clean, "HH:mm:ss"),
-    F.to_timestamp(time_clean, "HH:mm"),
+    F.try_to_timestamp(time_clean, F.lit("hh:mm:ss a")),
+    F.try_to_timestamp(time_clean, F.lit("HH:mm:ss")),
+    F.try_to_timestamp(time_clean, F.lit("HH:mm")),
 )
 event_time = F.date_format(parsed_time, "HH:mm:ss")
 
@@ -65,7 +69,7 @@ vehicle   = F.trim(unify("Vehicle"))
 std = bronze.select(
     event_date.alias("event_date"),
     event_time.alias("event_time"),
-    F.to_timestamp(
+    F.try_to_timestamp(
         F.concat_ws(" ", F.date_format(event_date, "yyyy-MM-dd"), event_time)
     ).alias("event_ts"),
     F.hour(parsed_time).alias("hour_of_day"),
@@ -79,8 +83,8 @@ std = bronze.select(
      .when(direction.rlike("^(BW|B/W)$"), "Both Ways")
      .otherwise(None).alias("direction"),
     F.upper(F.trim(unify("Incident", "Code"))).alias("incident_type"),
-    unify("Min Delay", "Delay").cast("int").alias("delay_min"),
-    unify("Min Gap", "Gap").cast("int").alias("gap_min"),
+    unify("Min_Delay", "Delay").cast("int").alias("delay_min"),
+    unify("Min_Gap", "Gap").cast("int").alias("gap_min"),
     F.when(vehicle.isin("0", "null", ""), None).otherwise(vehicle).alias("vehicle_id"),
     F.col("_source_file"),
 )
@@ -93,6 +97,12 @@ display(std.limit(20))
 # MAGIC ## Incident map
 # MAGIC The rules below produce a draft. New codes are appended with `is_reviewed = false`.
 # MAGIC Existing rows are never overwritten, so manual corrections survive the next run.
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT *
+# MAGIC FROM csv.`/Volumes/ttc_bus_delays/bronze/landing/Code Descriptions.csv`;
 
 # COMMAND ----------
 
@@ -136,6 +146,23 @@ WHERE i.incident_type IS NOT NULL
 # MAGIC SET incident_category = 'Equipment', is_reviewed = true
 # MAGIC WHERE incident_type = 'MFUS';
 # MAGIC ```
+
+# COMMAND ----------
+
+display(
+    std.groupBy("incident_type")
+       .agg(F.count("*").alias("rows"), F.sum("delay_min").alias("lost_minutes"))
+       .orderBy(F.desc("rows"))
+       .limit(40)
+)
+
+# COMMAND ----------
+
+display(
+    std.filter(F.col("incident_type").isin("DIVERSION", "MFDV"))
+       .groupBy("_source_file", "incident_type").count()
+       .orderBy("_source_file")
+)
 
 # COMMAND ----------
 
