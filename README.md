@@ -11,7 +11,7 @@ A medallion-architecture pipeline on Databricks over eight years of Toronto Tran
 As a frequent user of TTC, it seems intuitive that TTC loses most of its time due to *breakdowns*. However, my findings suggested a different reason.
 
 
-Equipment, External and Safety incidents all share a median of 10 minutes and a ceiling around 30 — when a vehicle fails, it gets swapped, and that takes a bounded amount of time. Operational failures have abnormally high delays: a median of 12 minutes against a mean of 30.1, with individual incidents running up to 16 hours.
+Equipment, External and Safety all sit at a median of 10 minutes with a mean close to it — 13.2, 14.1, 13.9. Operational is the outlier: a median of 12 against a mean of 30.1, with individual incidents running up to 16 hours.
 
 ![finding_2](docs/images/finding_2.png)
 
