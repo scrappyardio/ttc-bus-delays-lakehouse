@@ -8,6 +8,8 @@ A medallion-architecture pipeline on Databricks over eight years of Toronto Tran
 
 ## The finding
 
+As a frequent user of TTC, it seems intuitive that TTC loses most of its time due to *breakdowns*
+
 The intuitive answer to "where does TTC lose the most time" is *breakdowns* — they are the most frequent incident type. The data disagrees.
 
 **Lost minutes sit in the tail, not in the frequency.** Equipment, External and Safety incidents all share a median of 10 minutes and a ceiling around 30 — when a vehicle fails, it gets swapped, and that takes a bounded amount of time. Operational failures have no such ceiling: a median of 12 minutes against a mean of 30.1, with individual incidents running up to 16 hours.
