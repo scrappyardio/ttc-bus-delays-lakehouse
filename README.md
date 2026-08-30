@@ -19,8 +19,6 @@ As a result, **41.5% of incidents but 61.2% of lost minutes** (2018–2024).
 
 Halving the number of breakdowns would halve a predictable, narrow distribution and leave the tail untouched. The time is in the rare, long operational failures — fewer events, more minutes, and no procedure bounding them.
 
-📊 **[Full analysis, methodology and limitations →](docs/findings.md)**
-
 ---
 
 ![Dashboard](docs/images/Dashboard1.png)
