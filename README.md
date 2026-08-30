@@ -93,20 +93,13 @@ notebooks/
   03_gold_build.sql     fact table + four aggregates
   04_checks.sql         validation queries, pipeline logging
   05_analysis.sql       the queries behind every number in findings.md
-docs/
-  findings.md           full analysis, assumptions, and limitations
+docs/images
+  Dashboard1.png
+  finding_1.png
+  finding_2.png
+  job.png
+  job2.png           
 ```
-
----
-
-## Stack
-
-Databricks · Unity Catalog · PySpark · Spark Structured Streaming (Auto Loader) · Delta Lake · SQL · Databricks AI/BI
-
-**Data source:** [City of Toronto Open Data — TTC Bus Delay Data](https://open.toronto.ca/dataset/ttc-bus-delay-data/)
-
-
-__________________________
 ---
 
 ## Where the tail actually shows up
@@ -130,6 +123,16 @@ Worth noting these are not the busiest routes. Route 77 logged 232 incidents in 
 
 **Lost minutes aren't passenger minutes.** There's no ridership or schedule in this dataset, so a 30-minute delay at rush hour weighs the same as one at midnight. Ranking routes by actual harm isn't possible here.
 
-**The cause is what was logged, not what was established.** I classified `LATE LEAVING GARAGE - MECHANICAL` as Operational on the base cause rather than the qualifier. That's my call, not a property of the data.
+**The cause is what was logged, not what was established.** I classified `LATE LEAVING GARAGE - MECHANICAL` as Operational on the base cause rather than the qualifier. That's my decision, not a property of the data.
 
-**3,077 rows have no route number** and are excluded — there's no way to recover it. Five cause codes sit in Other: two are literally labelled OTHER in the TTC dictionary, three have no description at all.
+**3,077 rows have no route number** and are excluded, there's no way to recover it. Five cause codes sit in Other: two are literally labelled OTHER in the TTC dictionary, three have no description at all.
+
+---
+
+## Stack
+
+Databricks · Unity Catalog · PySpark · Spark Structured Streaming (Auto Loader) · Delta Lake · SQL · Databricks AI/BI
+
+**Data source:** [City of Toronto Open Data — TTC Bus Delay Data](https://open.toronto.ca/dataset/ttc-bus-delay-data/)
+
+
