@@ -12,7 +12,9 @@ As a frequent user of TTC, it seems intuitive that TTC loses most of its time du
 
 
 **Lost minutes sit in the tail, not in the frequency.** Equipment, External and Safety incidents all share a median of 10 minutes and a ceiling around 30 — when a vehicle fails, it gets swapped, and that takes a bounded amount of time. Operational failures have no such ceiling: a median of 12 minutes against a mean of 30.1, with individual incidents running up to 16 hours.
-![finding1](docs/images/finding1.png)
+
+![finding_1](docs/images/finding_1.png)
+
 The consequence is that Operational produces **41.5% of incidents but 61.2% of lost minutes** (2018–2024).
 
 Halving the number of breakdowns would halve a predictable, narrow distribution and leave the tail untouched. The time is in the rare, long operational failures — fewer events, more minutes, and no procedure bounding them.
