@@ -104,3 +104,32 @@ docs/
 Databricks · Unity Catalog · PySpark · Spark Structured Streaming (Auto Loader) · Delta Lake · SQL · Databricks AI/BI
 
 **Data source:** [City of Toronto Open Data — TTC Bus Delay Data](https://open.toronto.ca/dataset/ttc-bus-delay-data/)
+
+
+__________________________
+---
+
+## Where the tail actually shows up
+
+The routes with the widest gap between mean and median, 2018–2024, minimum 50 incidents:
+
+| Route | Incidents | avg | median | gap |
+|---|---|---|---|---|
+| 77 | 232 | 87.0 | 18.5 | 68.5 |
+| 55 | 175 | 87.8 | 30 | 57.8 |
+| 162 | 243 | 83.5 | 30 | 53.5 |
+| 121 | 763 | 67.0 | 20 | 47.0 |
+
+Break these down by category and Equipment and Safety stop around 30 minutes while Operational doesn't. When a bus fails it gets swapped, and a swap takes about as long as it takes. A hold at the terminal or a missing operator has no such procedure attached.
+
+Worth noting these are not the busiest routes. Route 77 logged 232 incidents in seven years. This is a concentrated problem, not a widespread one.
+
+## What this data can't tell you
+
+**Why Operational changed in 2025.** Eight times fewer incidents, mean up from 30.1 to 57.2. Either small delays migrated into Equipment under the new coding, or the failures themselves changed. The other three categories held their medians, which points at the first — but I can't separate them without a crosswalk from TTC's old labels to its new codes, and that isn't published.
+
+**Lost minutes aren't passenger minutes.** There's no ridership or schedule in this dataset, so a 30-minute delay at rush hour weighs the same as one at midnight. Ranking routes by actual harm isn't possible here.
+
+**The cause is what was logged, not what was established.** I classified `LATE LEAVING GARAGE - MECHANICAL` as Operational on the base cause rather than the qualifier. That's my call, not a property of the data.
+
+**3,077 rows have no route number** and are excluded — there's no way to recover it. Five cause codes sit in Other: two are literally labelled OTHER in the TTC dictionary, three have no description at all.
