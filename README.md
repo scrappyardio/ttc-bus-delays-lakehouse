@@ -26,13 +26,13 @@ Halving the number of breakdowns would halve a predictable, narrow distribution 
 
 ---
 
-## What the pipeline had to survive
+## Important details
 
 The source data is not clean, and most of the engineering decisions here exist because of that.
 
-**Schema drift across years.** Column names change between annual releases — `Report_Date`/`Date`, `Route`/`Line`, `Incident`/`Code`, `Direction`/`Bound`. Bronze keeps every variant as a separate column and lets silver merge them, so a new naming convention never breaks ingestion.
+**Schema drift across years.** Column names change between annual releases — `Report_Date`/`Date`, `Route`/`Line`, `Incident`/`Code`, `Direction`/`Bound`. Following the definition of Bronze layer, I chose to keep the data untouched and stuck to the schemaEvolutionMode "addNewColumns"so that I could keep every variant as a separate column and lets silver merge them through mergeSchema, so a new naming convention never breaks ingestion.
 
-**Everything stays a string in bronze.** Type inference at the door loses data silently: a malformed value slips into `_rescued_data` and nobody notices. With strings, failure happens downstream in silver, where it is visible, counted, and quarantined with a reason.
+**Everything stays a string in bronze.** Due to the schema drift and also understanding that it is possible to lose some malformed data going to _rescued_data column secretly, I've decided to do the CAST and convert the types later, during the silver layer, while leaving all ingested data STRING type in bronze layer.
 
 **Three date formats and a non-standard time format.** Parsed through an explicit cascade rather than inference. The 2018–2020 files write times as `1:13:00 a.m.` — lowercase, with periods, no leading zero.
 
