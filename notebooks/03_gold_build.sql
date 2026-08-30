@@ -100,3 +100,8 @@ HAVING count(*) >= 50;
 -- COMMAND ----------
 
 SELECT year, count(*) AS rows FROM gold.fct_bus_delays GROUP BY 1 ORDER BY 1;
+
+-- COMMAND ----------
+
+SELECT COUNT(*)
+FROM ttc_bus_delays.gold.fct_bus_delays
