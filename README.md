@@ -93,7 +93,7 @@ notebooks/
   03_gold_build.sql     fact table + four aggregates
   04_checks.sql         validation queries, pipeline logging
   05_analysis.sql       the queries behind every number in findings.md
-docs
+docs/
   Dashboard1.png
   finding_1.png
   finding_2.png
