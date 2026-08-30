@@ -64,7 +64,7 @@ CSV files (8 annual releases)
         └── agg_location_hotspots
 ```
 
-After I was satisfied with the way project was set-up from bronze to gold, I have orchestrated as a four-task Databricks Job, serverless, with retries on the ingest task. Reruns are idempotent thanks to the checkpoints inside of the autoloader. Finally, I checked the final result by running the full pipeline twice and confirming the gold row count is unchanged.
+After I was satisfied with the way project was set-up from bronze to gold, I have orchestrated as a four-task Databricks Job, serverless, with retries on the ingest task. Bronze is incremental — Auto Loader checkpoints mean already-ingested files are never re-read. Silver and gold are rebuilt from scratch on every run, so the whole pipeline is safe to rerun. Finally, I checked the final result by running the full pipeline twice and confirming the gold row count is unchanged.
 
 ![job2](docs/images/job2.png)
 
@@ -80,6 +80,8 @@ After I was satisfied with the way project was set-up from bronze to gold, I hav
 | gold (2018–2025) | 254,310 |
 
 Every gap is accounted for: 1,566 rows collapsed by deduplication on the business key, and 29,952 rows are an incomplete 2026 excluded from gold as a partial period. Both are verifiable by query, not asserted.
+
+Notebook "05_analysis.sql" shows how I reached the metrics I'm discussing.
 
 ---
 
