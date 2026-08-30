@@ -65,6 +65,8 @@ CSV files (8 annual releases)
 
 Orchestrated as a four-task Databricks Job, serverless, with retries on the ingest task. Reruns are idempotent — verified by running the full pipeline twice and confirming the gold row count is unchanged.
 
+![job2](docs/images/job2.png)
+
 ![job](docs/images/job.png)
 
 ### Layer reconciliation
