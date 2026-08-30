@@ -20,7 +20,7 @@ Halving the number of breakdowns would halve a predictable, narrow distribution 
 
 ---
 
-![Dashboard](docs/images/dashboard.png)
+![Dashboard](docs/images/Dashboard1.png)
 
 ---
 
