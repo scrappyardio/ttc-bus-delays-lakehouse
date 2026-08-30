@@ -91,6 +91,7 @@ notebooks/
   02_silver_build.py    parsing, classification, validation, quarantine
   03_gold_build.sql     fact table + four aggregates
   04_checks.sql         validation queries, pipeline logging
+  05_analysis.sql       the queries behind every number in findings.md
 docs/
   findings.md           full analysis, assumptions, and limitations
 ```
