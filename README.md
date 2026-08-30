@@ -8,9 +8,8 @@ A medallion-architecture pipeline on Databricks over eight years of Toronto Tran
 
 ## The finding
 
-As a frequent user of TTC, it seems intuitive that TTC loses most of its time due to *breakdowns*
+As a frequent user of TTC, it seems intuitive that TTC loses most of its time due to *breakdowns*. However, my findings suggested a different reason.
 
-The intuitive answer to "where does TTC lose the most time" is *breakdowns* — they are the most frequent incident type. The data disagrees.
 
 **Lost minutes sit in the tail, not in the frequency.** Equipment, External and Safety incidents all share a median of 10 minutes and a ceiling around 30 — when a vehicle fails, it gets swapped, and that takes a bounded amount of time. Operational failures have no such ceiling: a median of 12 minutes against a mean of 30.1, with individual incidents running up to 16 hours.
 
@@ -63,7 +62,7 @@ CSV files (8 annual releases)
         └── agg_location_hotspots
 ```
 
-Orchestrated as a four-task Databricks Job, serverless, with retries on the ingest task. Reruns are idempotent — verified by running the full pipeline twice and confirming the gold row count is unchanged.
+After I was satisfied with the way project was set-up from bronze to gold, I have orchestrated as a four-task Databricks Job, serverless, with retries on the ingest task. Reruns are idempotent thanks to the checkpoints inside of the autoloader. Finally, I checked the final result by running the full pipeline twice and confirming the gold row count is unchanged.
 
 ![job2](docs/images/job2.png)
 
