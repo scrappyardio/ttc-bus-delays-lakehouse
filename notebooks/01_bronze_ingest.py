@@ -90,8 +90,9 @@ spark.table(TARGET).printSchema()
 # COMMAND ----------
 
 df = spark.table(TARGET)
-print(f"rows: {df.count():,}")
-print(df.columns)
+print(f"rows: {df.count():,}, columns: {len(df.columns)}")
+for c in sorted(df.columns):
+    print(" ", c)
 
 # COMMAND ----------
 
@@ -121,17 +122,4 @@ display(
     df.filter(F.col("_rescued_data").isNotNull())
       .select("_source_file", "_rescued_data")
       .limit(20)
-)
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC SELECT *
-# MAGIC FROM ttc_bus_delays.bronze.bus_delays_raw
-# MAGIC WHERE Report_Date IS NOT NULL
-
-# COMMAND ----------
-
-display(spark.read.option("header", "true")
-        .csv(f"{LANDING}/ttc-bus-delay-data-2021.csv")
 )

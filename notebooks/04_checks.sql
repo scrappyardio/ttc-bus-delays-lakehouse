@@ -10,7 +10,6 @@ USE CATALOG ttc_bus_delays;
 
 -- COMMAND ----------
 
-
 SELECT
   (SELECT count(*) FROM silver.bus_delays)            AS clean_rows,
   (SELECT count(*) FROM silver.bus_delays_quarantine) AS bad_rows,
@@ -90,3 +89,21 @@ SELECT
 -- COMMAND ----------
 
 SELECT * FROM monitoring.pipeline_logs ORDER BY run_ts DESC LIMIT 5;
+
+-- COMMAND ----------
+
+-- MAGIC
+-- MAGIC %md
+-- MAGIC ### Final Results 2018-2024 After Adding 2025 Data
+
+-- COMMAND ----------
+
+-- MAGIC %python
+-- MAGIC df = spark.table("ttc_bus_delays.bronze.bus_delays_raw")
+-- MAGIC print(f"After 2025: rows = {df.count():,}, columns = {len(df.columns)}")
+-- MAGIC print(df.columns)
+
+-- COMMAND ----------
+
+SELECT (SELECT count(*) FROM silver.bus_delays WHERE year(event_date) BETWEEN 2018 AND 2025)
+     - (SELECT count(*) FROM gold.fct_bus_delays) AS diff

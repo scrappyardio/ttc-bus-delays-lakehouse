@@ -47,9 +47,6 @@ raw_date  = unify("Report_Date", "Date")
 raw_time  = unify("Time")
 raw_route = unify("Route", "Line")
 
-# Explicit format cascade. A plain cast("date") silently nulls every non-ISO year.
-# substring(1,10) handles "2014-01-01 00:00:00" and "2025-01-01T00:00:00",
-# which a bare yyyy-MM-dd pattern rejects because of the trailing text.
 event_date = F.coalesce(
     F.try_to_date(F.substring(raw_date, 1, 10), F.lit("yyyy-MM-dd")),
     F.try_to_date(raw_date, F.lit("d-MMM-yy")),
@@ -57,9 +54,10 @@ event_date = F.coalesce(
 )
 
 # Spark expects AM/PM, the source has "a.m." with dots and lowercase.
+# h (not hh) because 2018-2020 files write "1:13:00 a.m." without a leading zero.
 time_clean = F.upper(F.regexp_replace(raw_time, r"\.", ""))
 parsed_time = F.coalesce(
-    F.try_to_timestamp(time_clean, F.lit("hh:mm:ss a")),
+    F.try_to_timestamp(time_clean, F.lit("h:mm:ss a")),
     F.try_to_timestamp(time_clean, F.lit("HH:mm:ss")),
     F.try_to_timestamp(time_clean, F.lit("HH:mm")),
 )
@@ -153,7 +151,6 @@ SELECT
     WHEN i.incident_type RLIKE '^MF|MECHANICAL'                             THEN 'Equipment'
     WHEN i.incident_type RLIKE '^(SF|EF)|EMERGENCY|SECURITY|COLLISION|FIRE' THEN 'External'
     WHEN i.incident_type RLIKE '^(TFC|EO|MR)|DIVERSION|GENERAL DELAY|OFF ROUTE|LATE' THEN 'Operational'
-    WHEN i.incident_type RLIKE 'OPERATOR|GARAGE|CREW|STAFF'                 THEN 'Personnel'
     WHEN i.incident_type RLIKE 'CLEANING|UNSANITARY|VISION|INVESTIGATION'   THEN 'Safety'
     ELSE 'Other'
   END,
@@ -165,102 +162,65 @@ WHERE i.incident_type IS NOT NULL
 
 # COMMAND ----------
 
-display(
-    std.groupBy("incident_type")
-       .agg(F.count("*").alias("rows"), F.sum("delay_min").alias("lost_minutes"))
-       .orderBy(F.desc("rows"))
-       .limit(40)
-)
+fixes = [
+    ("Equipment",   "incident_type LIKE 'EF%'"),           # BODY, DOORS, BRAKES, PROPULSION — узлы автобуса
+    ("Operational", "incident_type IN ('TFLF','TFLL')"),    # опоздания
+    ("External",    "incident_type IN ('TFPD','TFPI','PFPD')"),    # столкновения TTC
+    ("Safety",      "incident_type IN ('TFOI')"),           # травма в салоне
+]
+
+for category, predicate in fixes:
+    spark.sql(f"""
+        UPDATE silver.incident_map
+        SET incident_category = '{category}', is_reviewed = true
+        WHERE {predicate} AND NOT is_reviewed
+    """)
+
+display(spark.sql("""
+    SELECT incident_category,
+           count(*)                        AS codes,
+           sum(cast(is_reviewed AS int))   AS reviewed
+    FROM silver.incident_map
+    GROUP BY incident_category
+    ORDER BY codes DESC
+"""))
 
 # COMMAND ----------
 
 # MAGIC %sql
-# MAGIC SELECT *
-# MAGIC FROM ttc_bus_delays.silver.code_descriptions
-# MAGIC WHERE incident_type LIKE 'EF%'
-
-# COMMAND ----------
-
-std.select("incident_type").distinct().createOrReplaceTempView("v_incidents")
-
-spark.sql("""
-INSERT INTO silver.incident_map
-SELECT
-  i.incident_type,
-  CASE
-    WHEN i.incident_type LIKE 'EF%' THEN 'Equipment'
-    WHEN i.incident_type LIKE 'SF%' THEN 'External'
-    WHEN i.incident_type IN ('MFCN') THEN 'Safety'
-    WHEN i.incident_type LIKE 'MF%' THEN 'Equipment'
-    WHEN i.incident_type LIKE 'TF%' THEN 'Operational'
-    ELSE 'Other'
-  END,
-  false
-FROM v_incidents i
-WHERE i.incident_type IS NOT NULL
-  AND i.incident_type NOT IN (SELECT incident_type FROM silver.incident_map)
-""")
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC SELECT incident_category, count(*) AS n
-# MAGIC FROM silver.incident_map
-# MAGIC GROUP BY incident_category
-# MAGIC ORDER BY n DESC
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC SELECT incident_type FROM silver.incident_map ORDER BY incident_type
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC UPDATE silver.incident_map
-# MAGIC SET incident_category = 'Equipment', is_reviewed = true
-# MAGIC WHERE incident_type LIKE '%MECHANICAL%';
-# MAGIC
 # MAGIC UPDATE silver.incident_map
 # MAGIC SET incident_category = 'Operational', is_reviewed = true
-# MAGIC WHERE incident_type LIKE 'LATE%'
-# MAGIC    OR incident_type LIKE '%DIVERSION%'
-# MAGIC    OR incident_type LIKE '%OFF ROUTE%'
-# MAGIC    OR incident_type LIKE '%GENERAL DELAY%'
-# MAGIC    OR incident_type LIKE '%OPERATIONS%'
-# MAGIC    OR incident_type LIKE '%HELD BY%'
-# MAGIC    OR incident_type LIKE '%MANAGEMENT%';
+# MAGIC WHERE NOT is_reviewed AND (
+# MAGIC        incident_type LIKE 'LATE%'
+# MAGIC     OR incident_type LIKE '%DIVERSION%'
+# MAGIC     OR incident_type LIKE '%OFF ROUTE%'
+# MAGIC     OR incident_type LIKE '%GENERAL DELAY%'
+# MAGIC     OR incident_type LIKE '%OPERATIONS%'
+# MAGIC     OR incident_type LIKE '%HELD BY%'
+# MAGIC     OR incident_type LIKE '%MANAGEMENT%'
+# MAGIC     OR incident_type = 'MFDV'
+# MAGIC );
+# MAGIC
+# MAGIC UPDATE silver.incident_map
+# MAGIC SET incident_category = 'Equipment', is_reviewed = true
+# MAGIC WHERE NOT is_reviewed AND incident_type LIKE '%MECHANICAL%';
 # MAGIC
 # MAGIC UPDATE silver.incident_map
 # MAGIC SET incident_category = 'External', is_reviewed = true
-# MAGIC WHERE incident_type LIKE '%COLLISION%'
-# MAGIC    OR incident_type LIKE '%EMERGENCY%'
-# MAGIC    OR incident_type LIKE '%SECURITY%'
-# MAGIC    OR incident_type LIKE '%ROAD BLOCKED%';
+# MAGIC WHERE NOT is_reviewed AND (
+# MAGIC        incident_type LIKE '%COLLISION%'
+# MAGIC     OR incident_type LIKE '%EMERGENCY%'
+# MAGIC     OR incident_type LIKE '%SECURITY%'
+# MAGIC     OR incident_type LIKE '%ROAD BLOCKED%'
+# MAGIC );
 # MAGIC
 # MAGIC UPDATE silver.incident_map
 # MAGIC SET incident_category = 'Safety', is_reviewed = true
-# MAGIC WHERE incident_type LIKE '%CLEANING%'
-# MAGIC    OR incident_type LIKE '%INVESTIGATION%'
-# MAGIC    OR incident_type LIKE '%VISION%';
-# MAGIC
-# MAGIC UPDATE silver.incident_map
-# MAGIC SET incident_category = 'Operational', is_reviewed = true
-# MAGIC WHERE incident_type = 'MFDV';
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC SELECT incident_category, count(*) AS n, collect_set(incident_type) AS examples
-# MAGIC FROM silver.incident_map
-# MAGIC GROUP BY incident_category
-# MAGIC ORDER BY n DESC
-
-# COMMAND ----------
-
-# MAGIC %sql
-# MAGIC SELECT *
-# MAGIC FROM silver.incident_map
+# MAGIC WHERE NOT is_reviewed AND (
+# MAGIC        incident_type LIKE '%CLEANING%'
+# MAGIC     OR incident_type LIKE '%INVESTIGATION%'
+# MAGIC     OR incident_type LIKE '%VISION%'
+# MAGIC );
 
 # COMMAND ----------
 
@@ -312,3 +272,8 @@ quarantine.write.mode("overwrite").option("overwriteSchema", "true").saveAsTable
 n_ok = spark.table("silver.bus_delays").count()
 n_bad = spark.table("silver.bus_delays_quarantine").count()
 print(f"passed {n_ok:,} | quarantined {n_bad:,} | pass rate {100 * n_ok / (n_ok + n_bad):.2f}%")
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT failed_rule, count(*) FROM silver.bus_delays_quarantine GROUP BY 1;
