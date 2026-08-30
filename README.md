@@ -11,11 +11,11 @@ A medallion-architecture pipeline on Databricks over eight years of Toronto Tran
 As a frequent user of TTC, it seems intuitive that TTC loses most of its time due to *breakdowns*. However, my findings suggested a different reason.
 
 
-**Lost minutes sit in the tail, not in the frequency.** Equipment, External and Safety incidents all share a median of 10 minutes and a ceiling around 30 — when a vehicle fails, it gets swapped, and that takes a bounded amount of time. Operational failures have no such ceiling: a median of 12 minutes against a mean of 30.1, with individual incidents running up to 16 hours.
+Equipment, External and Safety incidents all share a median of 10 minutes and a ceiling around 30 — when a vehicle fails, it gets swapped, and that takes a bounded amount of time. Operational failures have abnormally high delays: a median of 12 minutes against a mean of 30.1, with individual incidents running up to 16 hours.
 
 ![finding_1](docs/images/finding_1.png)
 
-The consequence is that Operational produces **41.5% of incidents but 61.2% of lost minutes** (2018–2024).
+As a result, **41.5% of incidents but 61.2% of lost minutes** (2018–2024).
 
 Halving the number of breakdowns would halve a predictable, narrow distribution and leave the tail untouched. The time is in the rare, long operational failures — fewer events, more minutes, and no procedure bounding them.
 
@@ -39,7 +39,7 @@ The source data is not clean, and most of the engineering decisions here exist b
 
 **The source changed its coding methodology twice**, in 2021 and again in 2025. The second change was found by querying the *shape* of the incident field rather than its meaning: text labels and short codes have **zero overlap** across years. This makes three stretches — 2018–2020, 2022–2024, 2025 — comparable only within themselves, which is why the dashboard reports them separately.
 
-**Failed rows are quarantined, not dropped.** 3,118 rows sit in `silver.bus_delays_quarantine` tagged with the rule they broke, so data loss is auditable rather than invisible.
+**Failed rows are sent to the quarantine table.** 3,118 rows sit in `silver.bus_delays_quarantine` tagged with the rule they broke, so data loss is auditable rather than invisible.
 
 ---
 
