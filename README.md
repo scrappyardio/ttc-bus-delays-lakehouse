@@ -13,7 +13,7 @@ As a frequent user of TTC, it seems intuitive that TTC loses most of its time du
 
 Equipment, External and Safety incidents all share a median of 10 minutes and a ceiling around 30 — when a vehicle fails, it gets swapped, and that takes a bounded amount of time. Operational failures have abnormally high delays: a median of 12 minutes against a mean of 30.1, with individual incidents running up to 16 hours.
 
-![finding_1](docs/images/finding_1.png)
+![finding_2](docs/images/finding_2.png)
 
 As a result, **41.5% of incidents but 61.2% of lost minutes** (2018–2024).
 
