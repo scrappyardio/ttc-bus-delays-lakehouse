@@ -92,8 +92,8 @@ notebooks/
   02_silver_build.py    parsing, classification, validation, quarantine
   03_gold_build.sql     fact table + four aggregates
   04_checks.sql         validation queries, pipeline logging
-  05_analysis.sql       the queries behind every number in findings.md
-docs/
+  05_analysis.sql       behind every number in this README
+docs/images
   Dashboard1.png
   finding_1.png
   finding_2.png
@@ -119,7 +119,7 @@ Worth noting these are not the busiest routes. Route 77 logged 232 incidents in 
 
 ## What this data can't tell you
 
-**Why Operational changed in 2025.** Eight times fewer incidents, mean up from 30.1 to 57.2. Either small delays migrated into Equipment under the new coding, or the failures themselves changed. The other three categories held their medians, which points at the first — but I can't separate them without a crosswalk from TTC's old labels to its new codes, and that isn't published.
+**Why Operational changed in 2025.** Incidents fell by half between 2024 and 2025 — 21,125 to 10,386 — while the mean climbed to 57.2 minutes. Either small delays migrated into Equipment under the new coding, or the failures themselves changed. The other three categories held their medians, which points at the first — but I can't separate them without a crosswalk from TTC's old labels to its new codes, and that isn't published.
 
 **Lost minutes aren't passenger minutes.** There's no ridership or schedule in this dataset, so a 30-minute delay at rush hour weighs the same as one at midnight. Ranking routes by actual harm isn't possible here.
 
